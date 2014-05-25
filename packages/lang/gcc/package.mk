@@ -17,7 +17,7 @@
 ################################################################################
 
 PKG_NAME="gcc"
-PKG_VERSION="4.9.0"
+PKG_VERSION="4.7.3"
 PKG_REV="1"
 PKG_ARCH="any"
 PKG_LICENSE="GPL"
