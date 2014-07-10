@@ -1,8 +1,5 @@
 # Name of the Distro to build (full name, without special characters)
   DISTRONAME="OpenELEC"
-  if [ "$XBMC" = master ]; then
-    DISTRONAME="OpenELEC_Helix"
-  fi
 
 # short project description
   DESCRIPTION="OpenELEC is a fast and userfriendly XBMC Mediacenter distribution."
@@ -119,9 +116,6 @@
 
 # Mediacenter to use (xbmc / no)
   MEDIACENTER="xbmc"
-  if [ "$XBMC" = master ]; then
-    MEDIACENTER="xbmc-master"
-  fi
 
 # Skins to install (Confluence)
 # Space separated list is supported,
@@ -311,7 +305,7 @@
 # 'all' compiles all drivers;
 # 'all,!xxx,!yyy' de-selects previously selected drivers
 # "none" for disable LCD support
-  LCD_DRIVER="irtrans,imon,imonlcd,mdm166a,MtxOrb,lis,dm140,hd44780,CFontz,SureElec,vlsys_m428"
+  LCD_DRIVER="irtrans,imon,imonlcd,mdm166a,MtxOrb,lis,dm140,hd44780,CFontz,SureElec,vlsys_m428,serialVFD"
 
 # Modules to install in initramfs for early boot
   INITRAMFS_MODULES="xhci-hcd"

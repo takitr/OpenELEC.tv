@@ -17,7 +17,7 @@
 ################################################################################
 
 PKG_NAME="xbmc"
-PKG_VERSION="13-84725b0"
+PKG_VERSION="13-741d614"
 PKG_REV="1"
 PKG_ARCH="any"
 PKG_LICENSE="GPL"
@@ -518,4 +518,5 @@ post_install() {
   enable_service xbmc-waitonnetwork.service
   enable_service xbmc.service
   enable_service xbmc-lirc-suspend.service
+  enable_service display-manager.service
 }
