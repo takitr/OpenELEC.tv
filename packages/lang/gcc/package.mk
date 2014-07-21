@@ -23,7 +23,7 @@ case "$PROJECT" in
     PKG_VERSION="4.7.4"
     ;;
   *)
-    PKG_VERSION="4.9.0"
+    PKG_VERSION="4.9.1"
     ;;
 esac
 
