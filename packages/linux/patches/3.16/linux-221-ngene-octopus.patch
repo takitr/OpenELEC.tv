@@ -29410,7 +29410,7 @@ index 0000000..d48c860
 +
 +#ifdef CONFIG_PCI_MSI
 +	if (msi && pci_msi_enabled()) {
-+		stat = pci_enable_msi_block(dev->pdev, 2);
++		stat = pci_enable_msi_exact(dev->pdev, 2);
 +		if (stat == 0) {
 +			dev->msi = 1;
 +			pr_info("DDBrige using 2 MSI interrupts\n");

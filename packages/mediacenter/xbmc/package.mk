@@ -17,7 +17,7 @@
 ################################################################################
 
 PKG_NAME="xbmc"
-PKG_VERSION="13-5b00422"
+PKG_VERSION="13-6066a54"
 PKG_REV="1"
 PKG_ARCH="any"
 PKG_LICENSE="GPL"
@@ -291,7 +291,7 @@ if [ "$VAAPI" = yes ]; then
 # configure GPU drivers and dependencies:
   get_graphicdrivers
 
-  PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET $LIBVA"
+  PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET libva-intel-driver"
   XBMC_VAAPI="--enable-vaapi"
 else
   XBMC_VAAPI="--disable-vaapi"
@@ -458,10 +458,8 @@ post_makeinstall_target() {
   rm -rf $INSTALL/usr/share/applications
   rm -rf $INSTALL/usr/share/icons
   rm -rf $INSTALL/usr/share/xbmc/addons/repository.pvr-*
-  rm -rf $INSTALL/usr/share/xbmc/addons/script.module.pysqlite
   rm -rf $INSTALL/usr/share/xbmc/addons/script.module.simplejson
   rm -rf $INSTALL/usr/share/xbmc/addons/visualization.dxspectrum
-  rm -rf $INSTALL/usr/share/xbmc/addons/visualization.itunes
   rm -rf $INSTALL/usr/share/xbmc/addons/visualization.milkdrop
   rm -rf $INSTALL/usr/share/xbmc/addons/service.xbmc.versioncheck
   rm -rf $INSTALL/usr/share/xsessions
