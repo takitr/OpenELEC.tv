@@ -1,0 +1,29 @@
+From 200d8e87505ef7b59ce4f9632890b73421025936 Mon Sep 17 00:00:00 2001
+From: Alex Deryskyba <alex@codesnake.com>
+Date: Sun, 21 Sep 2014 17:34:08 +0300
+Subject: [PATCH 13/13] [aml] Always use the SYNC_OUTSIDE decoder flag for
+ most smooth playback of H264 video
+
+---
+ xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp |    5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp b/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp
+index 2e5ac96..23ab56c 100644
+--- a/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp
++++ b/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp
+@@ -1564,10 +1564,7 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints)
+     case VFORMAT_H264:
+     case VFORMAT_H264MVC:
+       am_private->gcodec.format = VIDEO_DEC_FORMAT_H264;
+-      am_private->gcodec.param  = (void*)EXTERNAL_PTS;
+-      // h264 in an avi file
+-      if (m_hints.ptsinvalid)
+-        am_private->gcodec.param = (void*)(EXTERNAL_PTS | SYNC_OUTSIDE);
++      am_private->gcodec.param  = (void*)(EXTERNAL_PTS | SYNC_OUTSIDE);
+       break;
+     case VFORMAT_REAL:
+       am_private->stream_type = AM_STREAM_RM;
+-- 
+1.7.9.5
+
