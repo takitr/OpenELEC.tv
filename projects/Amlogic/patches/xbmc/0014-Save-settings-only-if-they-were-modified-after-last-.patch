@@ -1,0 +1,142 @@
+From 8651b5d26929fdcb7cd1d6cab376394533585ed2 Mon Sep 17 00:00:00 2001
+From: Alex Deryskyba <alex@codesnake.com>
+Date: Mon, 6 Oct 2014 19:02:35 +0300
+Subject: [PATCH 14/14] Save settings only if they were modified after last
+ save
+
+This prevents from multiple saving the same settings and helps to resolve
+the issue on Amlogic G18REF TV-boxes when setiings may be lost after a poweroff.
+
+On G18REF When you press the red button on the remote the system receives a signal that power
+is about to off. XBMC always writes guisettings.xml before exit, and the same settings
+may be written several times from different places in code. But the power gets turned off
+before the system completes all shutdown procedures. There may be the case that guisettings.xml
+is written half-way and couldn't be read upon next boot, so the XBMC creates a new one with
+default settings.
+
+With this fix the settings will be written at exit only once, minimizing the risk of being lost.
+---
+ xbmc/settings/Settings.cpp            |   21 +++++++++++++--------
+ xbmc/settings/lib/SettingsManager.cpp |    8 ++++++--
+ xbmc/settings/lib/SettingsManager.h   |   10 +++++++++-
+ 3 files changed, 28 insertions(+), 11 deletions(-)
+
+diff --git a/xbmc/settings/Settings.cpp b/xbmc/settings/Settings.cpp
+index b09d61b..f7f7951 100644
+--- a/xbmc/settings/Settings.cpp
++++ b/xbmc/settings/Settings.cpp
+@@ -365,16 +365,21 @@ bool CSettings::Save()
+ 
+ bool CSettings::Save(const std::string &file)
+ {
+-  CXBMCTinyXML xmlDoc;
+-  TiXmlElement rootElement(SETTINGS_XML_ROOT);
+-  TiXmlNode *root = xmlDoc.InsertEndChild(rootElement);
+-  if (root == NULL)
+-    return false;
++  if (m_settingsManager->IsModified() || !CFile::Exists(file))
++  {
++    CXBMCTinyXML xmlDoc;
++    TiXmlElement rootElement(SETTINGS_XML_ROOT);
++    TiXmlNode *root = xmlDoc.InsertEndChild(rootElement);
++    if (root == NULL)
++      return false;
+ 
+-  if (!m_settingsManager->Save(root))
+-    return false;
++    if (!m_settingsManager->Save(root))
++      return false;
+ 
+-  return xmlDoc.SaveFile(file);
++    return xmlDoc.SaveFile(file);
++  }
++
++  return true;
+ }
+ 
+ void CSettings::Unload()
+diff --git a/xbmc/settings/lib/SettingsManager.cpp b/xbmc/settings/lib/SettingsManager.cpp
+index 80dab43..c923e81 100644
+--- a/xbmc/settings/lib/SettingsManager.cpp
++++ b/xbmc/settings/lib/SettingsManager.cpp
+@@ -28,7 +28,7 @@
+ 
+ 
+ CSettingsManager::CSettingsManager()
+-  : m_initialized(false), m_loaded(false)
++  : m_initialized(false), m_loaded(false), m_modified(false)
+ { }
+ 
+ CSettingsManager::~CSettingsManager()
+@@ -170,6 +170,7 @@ bool CSettingsManager::Load(const TiXmlElement *root, bool &updated, bool trigge
+     ret = Load(root);
+ 
+   updated = UpdateSettings(root);
++  m_modified = updated;
+ 
+   if (triggerEvents)
+     OnSettingsLoaded();
+@@ -177,7 +178,7 @@ bool CSettingsManager::Load(const TiXmlElement *root, bool &updated, bool trigge
+   return ret;
+ }
+ 
+-bool CSettingsManager::Save(TiXmlNode *root) const
++bool CSettingsManager::Save(TiXmlNode *root)
+ {
+   CSharedLock lock(m_critical);
+   CSharedLock settingsLock(m_settingsCritical);
+@@ -200,6 +201,7 @@ bool CSettingsManager::Save(TiXmlNode *root) const
+       return false;
+   }
+ 
++  m_modified = false;
+   OnSettingsSaved();
+ 
+   return true;
+@@ -746,6 +748,8 @@ void CSettingsManager::OnSettingChanged(const CSetting *setting)
+     for (SettingDependencies::const_iterator depIt = depsIt->second.begin(); depIt != depsIt->second.end(); ++depIt)
+       UpdateSettingByDependency(depsIt->first, *depIt);
+   }
++
++  m_modified = true;
+ }
+ 
+ void CSettingsManager::OnSettingAction(const CSetting *setting)
+diff --git a/xbmc/settings/lib/SettingsManager.h b/xbmc/settings/lib/SettingsManager.h
+index 30a997f..7bbdc35 100644
+--- a/xbmc/settings/lib/SettingsManager.h
++++ b/xbmc/settings/lib/SettingsManager.h
+@@ -88,7 +88,7 @@ public:
+    \param root XML node
+    \return True if the setting values were successfully saved, false otherwise
+    */
+-  virtual bool Save(TiXmlNode *root) const;
++  virtual bool Save(TiXmlNode *root);
+   /*!
+    \brief Unloads the previously loaded setting values.
+ 
+@@ -382,6 +382,13 @@ public:
+    */
+   void AddCondition(const std::string &identifier, SettingConditionCheck condition);
+ 
++  /*!
++   \brief Gets the value that indicates whether the settings were modified after last saving.
++
++   \return True if some of the settings was modified after last saving, false otherwise
++   */
++  bool IsModified() const { return m_modified; }
++
+ private:
+   // implementation of ISettingCallback
+   virtual bool OnSettingChanging(const CSetting *setting);
+@@ -426,6 +433,7 @@ private:
+ 
+   bool m_initialized;
+   bool m_loaded;
++  bool m_modified;
+ 
+   typedef std::map<std::string, Setting> SettingMap;
+   SettingMap m_settings;
+-- 
+1.7.9.5
+
