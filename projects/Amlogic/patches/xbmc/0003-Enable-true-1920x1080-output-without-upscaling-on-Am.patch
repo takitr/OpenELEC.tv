@@ -1,7 +1,7 @@
 From 78eb1312bd57f156819fb67f08c286fd7bface1c Mon Sep 17 00:00:00 2001
 From: Alex Deryskyba <alex@codesnake.com>
 Date: Wed, 16 Apr 2014 23:08:58 +0300
-Subject: [PATCH 03/14] Enable true 1920x1080 output without upscaling on
+Subject: [PATCH 03/15] Enable true 1920x1080 output without upscaling on
  Amlogic-based devices.
 
 ---

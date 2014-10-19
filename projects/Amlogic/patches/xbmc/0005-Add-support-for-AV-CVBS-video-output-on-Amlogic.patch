@@ -1,7 +1,7 @@
 From c2bb85005126e3fd9d6698c228307d540d46f320 Mon Sep 17 00:00:00 2001
 From: Alex Deryskyba <alex@codesnake.com>
 Date: Wed, 23 Jul 2014 22:23:34 +0300
-Subject: [PATCH 05/14] Add support for AV (CVBS) video output on Amlogic
+Subject: [PATCH 05/15] Add support for AV (CVBS) video output on Amlogic
 
 ---
  xbmc/windowing/egl/EGLNativeTypeAmlogic.cpp |   56 ++++++++++++++++++++++++---
