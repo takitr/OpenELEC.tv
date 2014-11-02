@@ -1,7 +1,7 @@
 From dac4cb46605ff4aa4efdfa926397724864ab0ef7 Mon Sep 17 00:00:00 2001
 From: Alex Deryskyba <alex@codesnake.com>
 Date: Sun, 21 Sep 2014 17:17:14 +0300
-Subject: [PATCH 11/15] [aml] Use fpsrate and fpsscale instead of rfpsrate and
+Subject: [PATCH 11/16] [aml] Use fpsrate and fpsscale instead of rfpsrate and
  rfpsscale to detect framerate
 
 ---
