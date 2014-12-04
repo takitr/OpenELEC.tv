@@ -319,7 +319,7 @@ IMAGE_NAME="$DISTRONAME-$TARGET_VERSION"
           TARGET_IMG="$TARGET_IMG" \
           IMAGE_NAME="$IMAGE_NAME" \
           $SCRIPTS/mkimage-atv
-      elif [ "$1" = "mkimage" -a -n "$BOOTLOADER" ]; then
+      elif [ "$1" = "mkimage" ]; then
         if [ "$2" == "efi" ] ; then
           UEFI=yes
         fi
