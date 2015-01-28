@@ -6,3 +6,10 @@
 
 # OpenGL-ES implementation to use (no / bcm2835-driver / opengl-meson6 / opengl-meson8)
   OPENGLES="opengl-meson6"
+
+# Addon Server Url
+  ADDON_SERVER_URL="http://addons.openelec.tv"
+
+# set the addon dirs
+  ADDON_PATH="$ADDON_VERSION/WeTek_Play/$TARGET_ARCH"
+  ADDON_URL="$ADDON_SERVER_URL/$ADDON_PATH"
