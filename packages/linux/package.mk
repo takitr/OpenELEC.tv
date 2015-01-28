@@ -19,7 +19,7 @@
 PKG_NAME="linux"
 case "$LINUX" in
   amlogic)
-    LINUX_VERSION="3.10-24e850b"
+    LINUX_VERSION="3.10-e660a72"
     PKG_VERSION="amlogic-$LINUX_VERSION"
     PKG_URL="https://github.com/codesnake/linux-amlogic/releases/download/$LINUX_VERSION/$PKG_NAME-$PKG_VERSION.tar.xz"
     ;;
