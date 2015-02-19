@@ -7,6 +7,11 @@
 # OpenGL-ES implementation to use (no / bcm2835-driver / opengl-meson6 / opengl-meson8)
   OPENGLES="opengl-meson6"
 
+# additional Firmware to use (dvb-firmware, misc-firmware, wlan-firmware)
+# Space separated list is supported,
+# e.g. FIRMWARE="dvb-firmware misc-firmware wlan-firmware"
+  FIRMWARE="misc-firmware wlan-firmware dvb-firmware brcmfmac_sdio-firmware"
+
 # Addon Server Url
   ADDON_SERVER_URL="http://addons.openelec.tv"
 
