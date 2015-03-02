@@ -1,0 +1,170 @@
+From 85d9705bdab587eb16710cdfa607018c6a4f7729 Mon Sep 17 00:00:00 2001
+From: davilla <davilla@4pi.com>
+Date: Thu, 6 Mar 2014 15:02:15 -0500
+Subject: [PATCH 18/27] pivos: enable switching display to 3dmodes for amlogic
+ hardware
+
+---
+ xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp |   41 +++++++++++++++++++++
+ xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.h   |    2 +
+ xbmc/utils/AMLUtils.cpp                           |   17 +++++++++
+ xbmc/utils/AMLUtils.h                             |    1 +
+ 4 files changed, 61 insertions(+)
+
+diff --git a/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp b/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp
+index 66ec4f7..d3a7b8b 100644
+--- a/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp
++++ b/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp
+@@ -1348,12 +1348,16 @@ CAMLCodec::CAMLCodec() : CThread("CAMLCodec")
+   m_dll = new DllLibAmCodec;
+   m_dll->Load();
+   am_private->m_dll = m_dll;
++  m_hdmi3dmode = false;
+ }
+ 
+ 
+ CAMLCodec::~CAMLCodec()
+ {
+   StopThread();
++  if (m_hdmi3dmode)
++    SetHDMI3dMode("3doff");
++
+   delete am_private;
+   am_private = NULL;
+   delete m_dll, m_dll = NULL;
+@@ -2038,6 +2042,23 @@ void CAMLCodec::SetVideo3dMode(const int mode3d)
+   aml_set_sysfs_int("/sys/class/ppmgr/ppmgr_3d_mode", mode3d);
+ }
+ 
++void CAMLCodec::SetHDMI3dMode(const char *mode3d)
++{
++  CLog::Log(LOGDEBUG, "CAMLCodec::SetVideo3dMode:mode3d(%s)", mode3d);
++  aml_set_sysfs_str("/sys/class/amhdmitx/amhdmitx0/config", mode3d);
++  if (strstr(mode3d, "3doff"))
++  {
++    // Some 3D HDTVs will not exit from 3D mode with 3doff
++    char disp_mode[256] = {};
++    if (aml_get_sysfs_str("/sys/class/display/mode", disp_mode, 255) != -1)
++      aml_set_sysfs_str("/sys/class/amhdmitx/amhdmitx0/", disp_mode);
++  }
++  else
++  {
++    m_hdmi3dmode = true;
++  }
++}
++
+ std::string CAMLCodec::GetStereoMode()
+ {
+   std::string  stereo_mode;
+@@ -2184,23 +2205,43 @@ void CAMLCodec::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
+   {
+     dst_rect.x2 *= 2.0;
+     SetVideo3dMode(MODE_3D_DISABLE);
++    if (aml_3dmode_present(m_stereo_mode))
++      SetHDMI3dMode("3dlr");
+   }
+   else if (m_stereo_mode == RENDER_STEREO_MODE_SPLIT_HORIZONTAL)
+   {
+     dst_rect.y2 *= 2.0;
+     SetVideo3dMode(MODE_3D_DISABLE);
++    if (aml_3dmode_present(m_stereo_mode))
++      SetHDMI3dMode("3dtb");
+   }
+   else if (m_stereo_mode == RENDER_STEREO_MODE_INTERLACED)
+   {
+     std::string mode = GetStereoMode();
+     if (mode == "left_right")
++    {
+       SetVideo3dMode(MODE_3D_LR);
++      if (aml_3dmode_present(m_stereo_mode))
++        SetHDMI3dMode("3dlr");
++    }
+     else if (mode == "right_left")
++    {
+       SetVideo3dMode(MODE_3D_LR_SWITCH);
++      if (aml_3dmode_present(m_stereo_mode))
++        SetHDMI3dMode("3dlr");
++    }
+     else if (mode == "row_interleaved_lr")
++    {
+       SetVideo3dMode(MODE_3D_LR);
++      if (aml_3dmode_present(m_stereo_mode))
++        SetHDMI3dMode("3dtb");
++    }
+     else if (mode == "row_interleaved_rl")
++    {
+       SetVideo3dMode(MODE_3D_LR_SWITCH);
++      if (aml_3dmode_present(m_stereo_mode))
++        SetHDMI3dMode("3dtb");
++    }
+     else
+       SetVideo3dMode(MODE_3D_DISABLE);
+   }
+diff --git a/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.h b/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.h
+index 3aa025d..297331c 100644
+--- a/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.h
++++ b/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.h
+@@ -60,6 +60,7 @@ private:
+   void          SetVideoSaturation(const int saturation);
+   void          GetRenderFeatures(Features &renderFeatures);
+   void          SetVideo3dMode(const int mode3d);
++  void          SetHDMI3dMode(const char *mode3d);
+   std::string   GetStereoMode();
+   static void   RenderFeaturesCallBack(const void *ctx, Features &renderFeatures);
+   void          SetVideoRect(const CRect &SrcRect, const CRect &DestRect);
+@@ -89,4 +90,5 @@ private:
+   float            m_zoom;
+   int              m_contrast;
+   int              m_brightness;
++  bool             m_hdmi3dmode;
+ };
+diff --git a/xbmc/utils/AMLUtils.cpp b/xbmc/utils/AMLUtils.cpp
+index 9d5b165..a25dbdd 100644
+--- a/xbmc/utils/AMLUtils.cpp
++++ b/xbmc/utils/AMLUtils.cpp
+@@ -26,6 +26,7 @@
+ #include <string>
+ 
+ #include "AMLUtils.h"
++#include "rendering/RenderSystem.h"
+ #include "utils/CPUInfo.h"
+ #include "utils/log.h"
+ #include "utils/StringUtils.h"
+@@ -116,6 +117,22 @@ bool aml_hw3d_present()
+   return has_hw3d == 1;
+ }
+ 
++bool aml_3dmode_present(int stereo_mode)
++{
++  char disp_cap_3d[256] = {};
++  if (aml_get_sysfs_str("/sys/class/amhdmitx/amhdmitx0/disp_cap_3d", disp_cap_3d, 255) == -1)
++    return false;
++
++  if (stereo_mode == RENDER_STEREO_MODE_INTERLACED && strstr(disp_cap_3d,"FramePacking"))
++    return true;
++  else if (stereo_mode == RENDER_STEREO_MODE_SPLIT_HORIZONTAL && strstr(disp_cap_3d,"TopBottom"))
++    return true;
++  else if (stereo_mode == RENDER_STEREO_MODE_SPLIT_VERTICAL && strstr(disp_cap_3d,"SidebySide"))
++    return true;
++
++  return false;
++}
++
+ bool aml_wired_present()
+ {
+   static int has_wired = -1;
+diff --git a/xbmc/utils/AMLUtils.h b/xbmc/utils/AMLUtils.h
+index 9778e9b..5487000 100644
+--- a/xbmc/utils/AMLUtils.h
++++ b/xbmc/utils/AMLUtils.h
+@@ -47,6 +47,7 @@ int aml_get_sysfs_int(const char *path);
+ bool aml_present();
+ void aml_permissions();
+ bool aml_hw3d_present();
++bool aml_3dmode_present(int stereo_mode);
+ bool aml_wired_present();
+ enum AML_DEVICE_TYPE aml_get_device_type();
+ void aml_cpufreq_min(bool limit);
+-- 
+1.7.10.4
+

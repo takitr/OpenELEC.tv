@@ -1,13 +1,18 @@
-Author: davilla <davilla@4pi.com>
-Date:   Sun Dec 21 17:37:22 2014 -0500
- 
-    [aml] fixed, do not reset pts_pcrscr if the error is too large, it is just a dvdplayer transient discontinuity
- 
+From 46b6f6763a1fe18ee1f80321572d6f4efb0b29e5 Mon Sep 17 00:00:00 2001
+From: davilla <davilla@4pi.com>
+Date: Sun, 21 Dec 2014 17:37:22 -0500
+Subject: [PATCH 24/27] fixed, do not reset pts_pcrscr if the error is too
+ large, it is just a dvdplayer transient discontinuity
+
+---
+ xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
 diff --git a/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp b/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp
-index 3435151..9d64aca 100644
+index 051a30a..c5607e3 100644
 --- a/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp
 +++ b/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp
-@@ -1974,7 +1974,11 @@ void CAMLCodec::Process()
+@@ -1930,7 +1930,11 @@ void CAMLCodec::Process()
            if (abs_error > 0.150)
            {
              // big error so try to reset pts_pcrscr
@@ -20,3 +25,6 @@ index 3435151..9d64aca 100644
            }
            else
            {
+-- 
+1.7.10.4
+
