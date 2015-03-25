@@ -28,7 +28,7 @@
   LOOP=$(/sbin/losetup -f)
 
   SYSTEM_SIZE=256
-  STORAGE_SIZE=32 # STORAGE_SIZE must be >= 32 !
+  STORAGE_SIZE=350 # STORAGE_SIZE must be >= 32 !
 
   DISK_SIZE=$(( $SYSTEM_SIZE + $STORAGE_SIZE + 4 ))
   DISK="$TARGET_IMG/$IMAGE_NAME.img"
@@ -291,6 +291,14 @@ fi # bootloader
 # add resize mark
   if [ "$UEFI" != "yes" ] ; then
     touch "$OE_TMP/.please_resize_me"
+    sync
+  fi
+
+# copy initial backup archive if exists
+  if [ -n "$INITIAL_BACKUP_URL" ]; then
+    echo "image: downloading initial backup archive"
+    mkdir -p "$OE_TMP/.restore"
+    wget -qO- "$INITIAL_BACKUP_URL" | tar xv --strip-components=1 -C "$OE_TMP"
     sync
   fi
 
