@@ -1,232 +1,36 @@
-From ced0caecb0c5d4862290a1fbbaec0665ab6847a7 Mon Sep 17 00:00:00 2001
-From: Rainer Hochecker <fernetmenta@online.de>
-Date: Fri, 2 Jan 2015 10:02:09 +0100
-Subject: [PATCH 1/6] renderer: drop old tempfix firstflippage, did not work
- anyway because RendererHandlesPresent returned always true
-
----
- xbmc/Application.cpp                        | 2 +-
- xbmc/cores/VideoRenderers/RenderManager.cpp | 9 ---------
- xbmc/cores/VideoRenderers/RenderManager.h   | 5 -----
- xbmc/guilib/GUIVideoControl.cpp             | 3 +--
- 4 files changed, 2 insertions(+), 17 deletions(-)
-
-diff --git a/xbmc/Application.cpp b/xbmc/Application.cpp
-index 4a5619a..aa7aed0 100644
---- a/xbmc/Application.cpp
-+++ b/xbmc/Application.cpp
-@@ -2222,7 +2222,7 @@ void CApplication::Render()
-     bool extPlayerActive = m_pPlayer->GetCurrentPlayer() == EPC_EXTPLAYER && m_pPlayer->IsPlaying() && !m_AppFocused;
- 
-     m_bPresentFrame = false;
--    if (!extPlayerActive && g_graphicsContext.IsFullScreenVideo() && !m_pPlayer->IsPausedPlayback() && g_renderManager.RendererHandlesPresent())
-+    if (!extPlayerActive && g_graphicsContext.IsFullScreenVideo() && !m_pPlayer->IsPausedPlayback())
-     {
-       m_bPresentFrame = g_renderManager.FrameWait(100);
-       hasRendered = true;
-diff --git a/xbmc/cores/VideoRenderers/RenderManager.cpp b/xbmc/cores/VideoRenderers/RenderManager.cpp
-index b31f3c9..ab894ba 100644
---- a/xbmc/cores/VideoRenderers/RenderManager.cpp
-+++ b/xbmc/cores/VideoRenderers/RenderManager.cpp
-@@ -293,19 +293,12 @@ bool CXBMCRenderManager::Configure(unsigned int width, unsigned int height, unsi
-     m_sleeptime = 1.0;
-     m_presentevent.notifyAll();
- 
--    m_firstFlipPage = false;  // tempfix
--
-     CLog::Log(LOGDEBUG, "CXBMCRenderManager::Configure - %d", m_QueueSize);
-   }
- 
-   return result;
- }
- 
--bool CXBMCRenderManager::RendererHandlesPresent() const
--{
--  return IsConfigured() && (m_firstFlipPage || m_format != RENDER_FMT_BYPASS);
--}
--
- bool CXBMCRenderManager::IsConfigured() const
- {
-   if (!m_pRenderer)
-@@ -661,8 +654,6 @@ void CXBMCRenderManager::FlipPage(volatile bool& bStop, double timestamp /* = 0L
- 
-     if(!m_pRenderer) return;
- 
--    m_firstFlipPage = true;              // tempfix
--
-     EPRESENTMETHOD presentmethod;
- 
-     EDEINTERLACEMODE deinterlacemode = CMediaSettings::Get().GetCurrentVideoSettings().m_DeinterlaceMode;
-diff --git a/xbmc/cores/VideoRenderers/RenderManager.h b/xbmc/cores/VideoRenderers/RenderManager.h
-index d3c2f1d..1086066 100644
---- a/xbmc/cores/VideoRenderers/RenderManager.h
-+++ b/xbmc/cores/VideoRenderers/RenderManager.h
-@@ -143,8 +143,6 @@ public:
- 
-   void UpdateResolution();
- 
--  bool RendererHandlesPresent() const;
--
- #ifdef HAS_GL
-   CLinuxRendererGL    *m_pRenderer;
- #elif defined(HAS_MMAL)
-@@ -267,9 +265,6 @@ protected:
-   //set to true when adding something to m_captures, set to false when m_captures is made empty
-   //std::list::empty() isn't thread safe, using an extra bool will save a lock per render when no captures are requested
-   bool                       m_hasCaptures; 
--
--  // temporary fix for RendererHandlesPresent after #2811
--  bool m_firstFlipPage;
- };
- 
- extern CXBMCRenderManager g_renderManager;
-diff --git a/xbmc/guilib/GUIVideoControl.cpp b/xbmc/guilib/GUIVideoControl.cpp
-index 22d0fc8..c47a6d5 100644
---- a/xbmc/guilib/GUIVideoControl.cpp
-+++ b/xbmc/guilib/GUIVideoControl.cpp
-@@ -43,8 +43,7 @@ CGUIVideoControl::~CGUIVideoControl(void)
- void CGUIVideoControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
- {
-   // TODO Proper processing which marks when its actually changed. Just mark always for now.
--  if (g_renderManager.RendererHandlesPresent())
--    MarkDirtyRegion();
-+  MarkDirtyRegion();
- 
-   CGUIControl::Process(currentTime, dirtyregions);
- }
--- 
-1.9.1
-
-
-From 6d4517a48e8ef757d6f7ae15067858a2bcdf782d Mon Sep 17 00:00:00 2001
-From: smallint <tahoma@gmx.de>
-Date: Fri, 2 Jan 2015 15:35:33 +0000
-Subject: [PATCH 2/6] Set dirty flag in teletext dialog if required
-
----
- xbmc/video/dialogs/GUIDialogTeletext.cpp | 19 +++++++++++++++++++
- xbmc/video/dialogs/GUIDialogTeletext.h   |  1 +
- 2 files changed, 20 insertions(+)
-
-diff --git a/xbmc/video/dialogs/GUIDialogTeletext.cpp b/xbmc/video/dialogs/GUIDialogTeletext.cpp
-index c552ae6..9be4548 100644
---- a/xbmc/video/dialogs/GUIDialogTeletext.cpp
-+++ b/xbmc/video/dialogs/GUIDialogTeletext.cpp
-@@ -46,7 +46,10 @@ CGUIDialogTeletext::~CGUIDialogTeletext()
- bool CGUIDialogTeletext::OnAction(const CAction& action)
- {
-   if (m_TextDecoder.HandleAction(action))
-+  {
-+    MarkDirtyRegion();
-     return true;
-+  }
- 
-   return CGUIDialog::OnAction(action);
- }
-@@ -54,6 +57,7 @@ bool CGUIDialogTeletext::OnAction(const CAction& action)
- bool CGUIDialogTeletext::OnBack(int actionID)
- {
-   m_bClose = true;
-+  MarkDirtyRegion();
-   return true;
- }
- 
-@@ -79,6 +83,12 @@ bool CGUIDialogTeletext::OnMessage(CGUIMessage& message)
-   return CGUIDialog::OnMessage(message);
- }
- 
-+void CGUIDialogTeletext::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
-+{
-+  CGUIDialog::Process(currentTime, dirtyregions);
-+  m_renderRegion = m_vertCoords;
-+}
-+
- void CGUIDialogTeletext::Render()
- {
-   // Do not render if we have no texture
-@@ -93,12 +103,18 @@ void CGUIDialogTeletext::Render()
-   if (!m_bClose)
-   {
-     if (teletextFadeAmount < 100)
-+    {
-       teletextFadeAmount = std::min(100, teletextFadeAmount + 5);
-+      MarkDirtyRegion();
-+    }
-   }
-   else
-   {
-     if (teletextFadeAmount > 0)
-+    {
-       teletextFadeAmount = std::max(0, teletextFadeAmount - 10);
-+      MarkDirtyRegion();
-+    }
- 
-     if (teletextFadeAmount == 0)
-       Close();
-@@ -109,6 +125,7 @@ void CGUIDialogTeletext::Render()
-   {
-     m_pTxtTexture->Update(m_TextDecoder.GetWidth(), m_TextDecoder.GetHeight(), m_TextDecoder.GetWidth()*4, XB_FMT_A8R8G8B8, textureBuffer, false);
-     m_TextDecoder.RenderingDone();
-+    MarkDirtyRegion();
-   }
- 
-   color_t color = ((color_t)(teletextFadeAmount * 2.55f) & 0xff) << 24 | 0xFFFFFF;
-@@ -184,4 +201,6 @@ void CGUIDialogTeletext::SetCoordinates()
-     top,
-     right,
-     bottom);
-+
-+  MarkDirtyRegion();
- }
-diff --git a/xbmc/video/dialogs/GUIDialogTeletext.h b/xbmc/video/dialogs/GUIDialogTeletext.h
-index 51aced5..e8e11f8 100644
---- a/xbmc/video/dialogs/GUIDialogTeletext.h
-+++ b/xbmc/video/dialogs/GUIDialogTeletext.h
-@@ -32,6 +32,7 @@ public:
-   virtual bool OnMessage(CGUIMessage& message);
-   virtual bool OnAction(const CAction& action);
-   virtual bool OnBack(int actionID);
-+  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
-   virtual void Render();
-   virtual void OnInitWindow();
-   virtual void OnDeinitWindow(int nextWindowID);
--- 
-1.9.1
-
-
-From c374f149e72e7786644c49aa096a7c963c6eb254 Mon Sep 17 00:00:00 2001
+From e7f4563c51376a1d64ffd516f744078b0b5d1223 Mon Sep 17 00:00:00 2001
 From: smallint <tahoma@gmx.de>
 Date: Sat, 16 Aug 2014 17:29:15 +0200
-Subject: [PATCH 3/6] renderer: improve rendering to gui and separate video
+Subject: [PATCH 21/26] renderer: improve rendering to gui and separate video
  layer
 
 ---
- xbmc/Application.cpp                            | 10 +---
- xbmc/cores/VideoRenderers/BaseRenderer.h        |  1 +
- xbmc/cores/VideoRenderers/LinuxRendererGLES.cpp | 52 +++++++++++++--------
- xbmc/cores/VideoRenderers/LinuxRendererGLES.h   |  2 +
- xbmc/cores/VideoRenderers/MMALRenderer.cpp      | 15 ------
- xbmc/cores/VideoRenderers/MMALRenderer.h        |  1 +
- xbmc/cores/VideoRenderers/OverlayRenderer.cpp   | 18 +++++++
- xbmc/cores/VideoRenderers/OverlayRenderer.h     |  1 +
- xbmc/cores/VideoRenderers/RenderManager.cpp     | 62 ++++++++++++++++++++-----
- xbmc/cores/VideoRenderers/RenderManager.h       |  5 +-
- xbmc/guilib/GUIControl.h                        |  3 ++
- xbmc/guilib/GUIControlGroup.cpp                 |  7 +++
- xbmc/guilib/GUIControlGroup.h                   |  1 +
- xbmc/guilib/GUIVideoControl.cpp                 | 31 ++++++++++++-
- xbmc/guilib/GUIVideoControl.h                   |  1 +
- xbmc/guilib/GUIWindowManager.cpp                | 22 ++++++++-
- xbmc/guilib/GUIWindowManager.h                  |  1 +
- xbmc/video/windows/GUIWindowFullScreen.cpp      | 31 ++++++++++++-
- xbmc/video/windows/GUIWindowFullScreen.h        |  2 +
+ xbmc/Application.cpp                            |   10 +---
+ xbmc/cores/VideoRenderers/BaseRenderer.h        |    1 +
+ xbmc/cores/VideoRenderers/LinuxRendererGLES.cpp |   52 +++++++++++--------
+ xbmc/cores/VideoRenderers/LinuxRendererGLES.h   |    2 +
+ xbmc/cores/VideoRenderers/MMALRenderer.cpp      |   15 ------
+ xbmc/cores/VideoRenderers/MMALRenderer.h        |    1 +
+ xbmc/cores/VideoRenderers/OverlayRenderer.cpp   |   18 +++++++
+ xbmc/cores/VideoRenderers/OverlayRenderer.h     |    1 +
+ xbmc/cores/VideoRenderers/RenderManager.cpp     |   62 ++++++++++++++++++-----
+ xbmc/cores/VideoRenderers/RenderManager.h       |    5 +-
+ xbmc/guilib/GUIControl.h                        |    3 ++
+ xbmc/guilib/GUIControlGroup.cpp                 |    7 +++
+ xbmc/guilib/GUIControlGroup.h                   |    1 +
+ xbmc/guilib/GUIVideoControl.cpp                 |   31 +++++++++++-
+ xbmc/guilib/GUIVideoControl.h                   |    1 +
+ xbmc/guilib/GUIWindowManager.cpp                |   22 +++++++-
+ xbmc/guilib/GUIWindowManager.h                  |    1 +
+ xbmc/video/windows/GUIWindowFullScreen.cpp      |   31 +++++++++++-
+ xbmc/video/windows/GUIWindowFullScreen.h        |    2 +
  19 files changed, 204 insertions(+), 62 deletions(-)
 
 diff --git a/xbmc/Application.cpp b/xbmc/Application.cpp
-index aa7aed0..3a222d4 100644
+index 69760da..bc33a79 100644
 --- a/xbmc/Application.cpp
 +++ b/xbmc/Application.cpp
-@@ -2170,9 +2170,6 @@ bool CApplication::RenderNoPresent()
+@@ -2175,9 +2175,6 @@ bool CApplication::RenderNoPresent()
    // dont show GUI when playing full screen video
    if (g_graphicsContext.IsFullScreenVideo())
    {
@@ -236,7 +40,7 @@ index aa7aed0..3a222d4 100644
      // close window overlays
      CGUIDialog *overlay = (CGUIDialog *)g_windowManager.GetWindow(WINDOW_DIALOG_VIDEO_OVERLAY);
      if (overlay) overlay->Close(true);
-@@ -2225,7 +2222,6 @@ void CApplication::Render()
+@@ -2230,7 +2227,6 @@ void CApplication::Render()
      if (!extPlayerActive && g_graphicsContext.IsFullScreenVideo() && !m_pPlayer->IsPausedPlayback())
      {
        m_bPresentFrame = g_renderManager.FrameWait(100);
@@ -244,7 +48,7 @@ index aa7aed0..3a222d4 100644
      }
      else
      {
-@@ -2268,8 +2264,6 @@ void CApplication::Render()
+@@ -2273,8 +2269,6 @@ void CApplication::Render()
    if(!g_Windowing.BeginRender())
      return;
  
@@ -253,7 +57,7 @@ index aa7aed0..3a222d4 100644
    CDirtyRegionList dirtyRegions = g_windowManager.GetDirty();
    if(g_graphicsContext.GetStereoMode())
    {
-@@ -2291,8 +2285,6 @@ void CApplication::Render()
+@@ -2296,8 +2290,6 @@ void CApplication::Render()
        hasRendered = true;
    }
  
@@ -262,7 +66,7 @@ index aa7aed0..3a222d4 100644
    g_Windowing.EndRender();
  
    // execute post rendering actions (finalize window closing)
-@@ -2317,7 +2309,7 @@ void CApplication::Render()
+@@ -2322,7 +2314,7 @@ void CApplication::Render()
      flip = true;
  
    //fps limiter, make sure each frame lasts at least singleFrameTime milliseconds
@@ -851,154 +655,5 @@ index 03608af..5a9b101 100644
    void ChangetheTimeCode(int remote);
    void ChangetheTVGroup(bool next);
 -- 
-1.9.1
-
-
-From b7c95f76c19aa172c6e63a9ed327369f0edb84df Mon Sep 17 00:00:00 2001
-From: Rainer Hochecker <fernetmenta@online.de>
-Date: Mon, 5 Jan 2015 11:29:15 +0100
-Subject: [PATCH 4/6] guilib: mark control dirty when setting to invisible
-
----
- xbmc/guilib/GUIControl.cpp | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/xbmc/guilib/GUIControl.cpp b/xbmc/guilib/GUIControl.cpp
-index e3d04db..ff2086b 100644
---- a/xbmc/guilib/GUIControl.cpp
-+++ b/xbmc/guilib/GUIControl.cpp
-@@ -511,6 +511,8 @@ void CGUIControl::SetVisible(bool bVisible, bool setVisState)
-   {
-     m_forceHidden = !bVisible;
-     SetInvalid();
-+    if (m_forceHidden)
-+      MarkDirtyRegion();
-   }
-   if (m_forceHidden)
-   { // reset any visible animations that are in process
--- 
-1.9.1
-
-
-From b5bb845c2640e8d05d88c761ce9f31a1e5bac91d Mon Sep 17 00:00:00 2001
-From: Rainer Hochecker <fernetmenta@online.de>
-Date: Tue, 6 Jan 2015 13:13:27 +0100
-Subject: [PATCH 5/6] renderer: exit gfx lock when waiting for present time
-
----
- xbmc/cores/VideoRenderers/RenderManager.cpp | 3 +++
- 1 file changed, 3 insertions(+)
-
-diff --git a/xbmc/cores/VideoRenderers/RenderManager.cpp b/xbmc/cores/VideoRenderers/RenderManager.cpp
-index 63bbdcc..b394d7b 100644
---- a/xbmc/cores/VideoRenderers/RenderManager.cpp
-+++ b/xbmc/cores/VideoRenderers/RenderManager.cpp
-@@ -381,7 +381,10 @@ void CXBMCRenderManager::FrameFinish()
-   SPresent& m = m_Queue[m_presentsource];
- 
-   if(g_graphicsContext.IsFullScreenVideo())
-+  {
-+    CSingleExit lock(g_graphicsContext);
-     WaitPresentTime(m.timestamp);
-+  }
- 
-   m_clock_framefinish = GetPresentTime();
- 
--- 
-1.9.1
-
-
-From a46f3062c805d98947348626651cbff0d805d912 Mon Sep 17 00:00:00 2001
-From: Rainer Hochecker <fernetmenta@online.de>
-Date: Fri, 23 Jan 2015 07:41:46 +0100
-Subject: [PATCH 6/6] renderer: fix sequence from WaitFrame, Render, FrameMove
- to WaitFrame, FrameMove, Render
-
----
- xbmc/Application.cpp                        | 12 +++++++++---
- xbmc/cores/VideoRenderers/RenderManager.cpp | 12 ++++++++++--
- xbmc/cores/VideoRenderers/RenderManager.h   |  3 ++-
- 3 files changed, 21 insertions(+), 6 deletions(-)
-
-diff --git a/xbmc/Application.cpp b/xbmc/Application.cpp
-index 3a222d4..5775a76 100644
---- a/xbmc/Application.cpp
-+++ b/xbmc/Application.cpp
-@@ -2212,16 +2212,17 @@ void CApplication::Render()
-   bool limitFrames = false;
-   unsigned int singleFrameTime = 10; // default limit 100 fps
- 
-+  // Whether externalplayer is playing and we're unfocused
-+  bool extPlayerActive = m_pPlayer->GetCurrentPlayer() == EPC_EXTPLAYER && m_pPlayer->IsPlaying() && !m_AppFocused;
-+
-   {
-     // Less fps in DPMS
-     bool lowfps = m_dpmsIsActive || g_Windowing.EnableFrameLimiter();
--    // Whether externalplayer is playing and we're unfocused
--    bool extPlayerActive = m_pPlayer->GetCurrentPlayer() == EPC_EXTPLAYER && m_pPlayer->IsPlaying() && !m_AppFocused;
- 
-     m_bPresentFrame = false;
-     if (!extPlayerActive && g_graphicsContext.IsFullScreenVideo() && !m_pPlayer->IsPausedPlayback())
-     {
--      m_bPresentFrame = g_renderManager.FrameWait(100);
-+      m_bPresentFrame = g_renderManager.HasFrame();
-     }
-     else
-     {
-@@ -2322,6 +2323,11 @@ void CApplication::Render()
-   if (flip)
-     g_graphicsContext.Flip(dirtyRegions);
- 
-+  if (!extPlayerActive && g_graphicsContext.IsFullScreenVideo() && !m_pPlayer->IsPausedPlayback())
-+  {
-+    g_renderManager.FrameWait(100);
-+  }
-+
-   m_lastFrameTime = XbmcThreads::SystemClockMillis();
-   CTimeUtils::UpdateFrameTime(flip);
- 
-diff --git a/xbmc/cores/VideoRenderers/RenderManager.cpp b/xbmc/cores/VideoRenderers/RenderManager.cpp
-index b394d7b..36c2842 100644
---- a/xbmc/cores/VideoRenderers/RenderManager.cpp
-+++ b/xbmc/cores/VideoRenderers/RenderManager.cpp
-@@ -316,13 +316,21 @@ void CXBMCRenderManager::Update()
-     m_pRenderer->Update();
- }
- 
--bool CXBMCRenderManager::FrameWait(int ms)
-+void CXBMCRenderManager::FrameWait(int ms)
- {
-   XbmcThreads::EndTime timeout(ms);
-   CSingleLock lock(m_presentlock);
-   while(m_presentstep == PRESENT_IDLE && !timeout.IsTimePast())
-     m_presentevent.wait(lock, timeout.MillisLeft());
--  return m_presentstep != PRESENT_IDLE;
-+}
-+
-+bool CXBMCRenderManager::HasFrame()
-+{
-+  CSingleLock lock(m_presentlock);
-+  if (m_presentstep == PRESENT_FRAME || m_presentstep == PRESENT_FRAME2)
-+    return true;
-+  else
-+    return false;
- }
- 
- void CXBMCRenderManager::FrameMove()
-diff --git a/xbmc/cores/VideoRenderers/RenderManager.h b/xbmc/cores/VideoRenderers/RenderManager.h
-index 7280423..b80319a 100644
---- a/xbmc/cores/VideoRenderers/RenderManager.h
-+++ b/xbmc/cores/VideoRenderers/RenderManager.h
-@@ -59,7 +59,8 @@ public:
-   void Update();
-   void FrameMove();
-   void FrameFinish();
--  bool FrameWait(int ms);
-+  void FrameWait(int ms);
-+  bool HasFrame();
-   void Render(bool clear, DWORD flags = 0, DWORD alpha = 255, bool gui = true);
-   bool IsGuiLayer();
-   bool IsVideoLayer();
--- 
-1.9.1
+1.7.10.4
 

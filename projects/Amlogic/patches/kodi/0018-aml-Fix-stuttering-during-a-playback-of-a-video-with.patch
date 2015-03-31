@@ -1,7 +1,7 @@
-From f6dd01f868d95fb80fe6f268906bbb9bce1bd75d Mon Sep 17 00:00:00 2001
+From 7b1c6ca4cb5bf3310cbfe3b007063439be301b6b Mon Sep 17 00:00:00 2001
 From: Alex Deryskyba <alex@codesnake.com>
 Date: Mon, 2 Mar 2015 09:48:14 +0100
-Subject: [PATCH 27/27] [aml] Fix stuttering during a playback of a video with
+Subject: [PATCH 18/26] [aml] Fix stuttering during a playback of a video with
  23.976 FPS
 
 ---
@@ -9,10 +9,10 @@ Subject: [PATCH 27/27] [aml] Fix stuttering during a playback of a video with
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp b/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp
-index ecae9de..577992a 100644
+index bf4c958..8d49de8 100644
 --- a/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp
 +++ b/xbmc/cores/dvdplayer/DVDCodecs/Video/AMLCodec.cpp
-@@ -1931,7 +1931,7 @@ void CAMLCodec::Process()
+@@ -1932,7 +1932,7 @@ void CAMLCodec::Process()
  
          double error = app_pts - (double)pts_video/PTS_FREQ;
          double abs_error = fabs(error);
