@@ -19,7 +19,7 @@
 PKG_NAME="linux"
 case "$LINUX" in
   amlogic)
-    LINUX_VERSION="3.10-a2f8d73"
+    LINUX_VERSION="3.10-a9cef51"
     PKG_VERSION="amlogic-$LINUX_VERSION"
     PKG_URL="$DISTRO_SRC/$PKG_NAME-$PKG_VERSION.tar.xz"
     ;;
