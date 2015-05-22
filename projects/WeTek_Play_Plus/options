@@ -51,13 +51,13 @@
     KERNEL_UBOOT_TARGET="uImage-dtb"
 
   # Kernel extra targets to build
-    KERNEL_UBOOT_EXTRA_TARGET="meson8m2_n200_2G.dtd meson8m2_n200_2G.dtb"
+    KERNEL_UBOOT_EXTRA_TARGET="wetek_play_plus.dtd wetek_play_plus.dtb"
 
   # Build Android kernel image using mkbootimg
     BUILD_ANDROID_BOOTIMG="yes"
 
   # Path to a file that will be passed as the --second parameter to Android mkbootimg
-    ANDROID_BOOTIMG_SECOND="arch/arm/boot/dts/amlogic/meson8m2_n200_2G.dtb"
+    ANDROID_BOOTIMG_SECOND="arch/arm/boot/dts/amlogic/wetek_play_plus.dtb"
 
   # Additional kernel make parameters (for example to specify the u-boot loadaddress)
     KERNEL_MAKE_EXTRACMD=""
