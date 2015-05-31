@@ -1,0 +1,29 @@
+diff --git a/drivers/net/phy/phy.c b/drivers/net/phy/phy.c
+index 84d656c..c1c7e56 100644
+--- a/drivers/net/phy/phy.c
++++ b/drivers/net/phy/phy.c
+@@ -42,12 +42,24 @@
+ #include <asm/irq.h>
+ #include <asm/uaccess.h>
+ 
++#ifdef CONFIG_LEDS_TRIGGER_NETWORK
++#include <linux/leds.h>
++extern void ledtrig_eth_linkup(struct led_classdev *led_cdev);
++extern void ledtrig_eth_linkdown(struct led_classdev *led_cdev);
++#endif
++
+ /**
+  * phy_print_status - Convenience function to print out the current phy status
+  * @phydev: the phy_device struct
+  */
+ void phy_print_status(struct phy_device *phydev)
+ {
++#ifdef CONFIG_LEDS_TRIGGER_NETWORK
++	if (phydev->link)
++		ledtrig_eth_linkup(NULL);
++	else
++		ledtrig_eth_linkdown(NULL);
++#endif
+ 	if (phydev->link)
+ 		pr_info("%s - Link is Up - %d/%s\n",
+ 			dev_name(&phydev->dev),
