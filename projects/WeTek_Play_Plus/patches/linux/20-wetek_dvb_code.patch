@@ -5828,8 +5828,8 @@ diff -Naur a/drivers/amlogic/wetek/mxl603.h b/drivers/amlogic/wetek/mxl603.h
 +#endif /* __MXL603_H__ */
 diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect.c
 --- a/drivers/amlogic/wetek/nimdetect.c	1970-01-01 01:00:00.000000000 +0100
-+++ b/drivers/amlogic/wetek/nimdetect.c	2015-03-18 17:20:36.000000000 +0100
-@@ -0,0 +1,484 @@
++++ b/drivers/amlogic/wetek/nimdetect.c	2015-05-30 15:21:19.000000000 +0200
+@@ -0,0 +1,462 @@
 +/*
 + * Wetek NIMs/DVB detection
 + *
@@ -5869,6 +5869,7 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +
 +static struct wetek_nims weteknims;
 +
++#ifndef CONFIG_ARCH_MESON8
 +static struct cxd2837_cfg cxd2837cfg = {
 +		.adr = 0x6C,
 +		.if_agc_polarity = 1,
@@ -5949,6 +5950,7 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +		.set_external_vol_gpio = set_external_vol_gpio,
 +	}
 +};
++#endif
 +
 +extern struct list_head usb_bus_list;
 +extern struct mutex usb_bus_list_lock;
@@ -6004,31 +6006,15 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +int set_external_vol_gpio(int *demod_id, int on)
 +{
 +	if (on) {
-+		if (*demod_id == 0 )
-+#ifdef CONFIG_ARCH_MESON8
-+			amlogic_gpio_direction_output(GPIOY_6, 1, "nimdetect");
-+#else		
-+			amlogic_gpio_direction_output(GPIOAO_8, 1, "nimdetect");
-+#endif			
++		if (*demod_id == 0 )	
++			amlogic_gpio_direction_output(GPIOAO_8, 1, "nimdetect");		
 +        else if (*demod_id == 1)
-+#ifdef CONFIG_ARCH_MESON8
-+			amlogic_gpio_direction_output(GPIOH_4, 1, "nimdetect");
-+#else
-+			amlogic_gpio_direction_output(GPIOAO_9, 1, "nimdetect");
-+#endif			
++			amlogic_gpio_direction_output(GPIOAO_9, 1, "nimdetect");			
 +	} else if (!on) {
 +		if (*demod_id == 0 )
-+#ifdef CONFIG_ARCH_MESON8
-+			amlogic_gpio_direction_output(GPIOY_6, 0, "nimdetect");
-+#else		
-+			amlogic_gpio_direction_output(GPIOAO_8, 0, "nimdetect");
-+#endif			
-+        else if (*demod_id == 1)
-+#ifdef CONFIG_ARCH_MESON8
-+			amlogic_gpio_direction_output(GPIOH_4, 0, "nimdetect");
-+#else		
-+			amlogic_gpio_direction_output(GPIOAO_9, 0, "nimdetect");
-+#endif			
++			amlogic_gpio_direction_output(GPIOAO_8, 0, "nimdetect");		
++        else if (*demod_id == 1)		
++			amlogic_gpio_direction_output(GPIOAO_9, 0, "nimdetect");		
 +    }
 +	return 0;
 +}
@@ -6083,7 +6069,7 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +	for (i = 0; i < TOTAL_I2C; i++) {
 +		
 +		if (!i)
-+			weteknims.i2c[i] = i2c_get_adapter(1); //tuner0 on I2C_A
++			weteknims.i2c[i] = i2c_get_adapter(0); //tuner0 on I2C_AO
 +		else 
 +			weteknims.i2c[i] = i2c_get_adapter(4); //tuner1 on I2C_D
 +			
@@ -6130,16 +6116,7 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +	
 +	/* FEC_RESET */
 +	amlogic_gpio_request(GPIOY_5, "nimdetect"); 
-+	
-+	/* INPUT1 POWER CTRL */
-+	amlogic_gpio_request(GPIOY_6, "nimdetect");
-+	
-+	/* INPUT2 POWER CTRL */
-+	amlogic_gpio_request(GPIOH_4, "nimdetect");
-+	
-+	amlogic_gpio_direction_output(GPIOY_6, 0, "nimdetect"); //SWITCH OFF INPUT1 POWER		
-+	amlogic_gpio_direction_output(GPIOH_4, 0, "nimdetect"); //SWITCH OFF INPUT2 POWER		
-+
++		
 +	/* RESET DEMOD(s) */
 +	amlogic_gpio_direction_output(GPIOY_5, 0, "nimdetect");
 +	msleep(600);
@@ -6165,6 +6142,7 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +	msleep(200);
 +#endif
 +
++#ifndef CONFIG_ARCH_MESON8
 +	dev_info(&pdev->dev, "Wetek NIM(s) detection in progress ...\n");
 +
 +	for (i = 0; i < TOTAL_DEMODS; i++) {		
@@ -6218,6 +6196,8 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +	if (weteknims.total_nims > 0)
 +		dev_info(&pdev->dev, "Total Wetek NIM(s) found: %d\n", weteknims.total_nims);
 +	
++#endif
++	
 +	return 0;
 +}
 +static int nim_dvb_remove(struct platform_device *pdev)
@@ -6235,8 +6215,6 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +	}
 +#ifdef CONFIG_ARCH_MESON8
 +	amlogic_gpio_free(GPIOY_5, "nimdetect");
-+	amlogic_gpio_free(GPIOY_6, "nimdetect");
-+	amlogic_gpio_free(GPIOH_4, "nimdetect");
 +#else
 +	amlogic_gpio_free(GPIOD_8, "nimdetect");
 +	amlogic_gpio_free(GPIOAO_8, "nimdetect");
