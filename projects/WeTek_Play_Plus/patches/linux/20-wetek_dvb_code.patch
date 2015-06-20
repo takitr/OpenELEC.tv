@@ -5828,8 +5828,8 @@ diff -Naur a/drivers/amlogic/wetek/mxl603.h b/drivers/amlogic/wetek/mxl603.h
 +#endif /* __MXL603_H__ */
 diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect.c
 --- a/drivers/amlogic/wetek/nimdetect.c	1970-01-01 01:00:00.000000000 +0100
-+++ b/drivers/amlogic/wetek/nimdetect.c	2015-05-30 15:21:19.000000000 +0200
-@@ -0,0 +1,462 @@
++++ b/drivers/amlogic/wetek/nimdetect.c	2015-06-01 13:52:44.000000000 +0200
+@@ -0,0 +1,488 @@
 +/*
 + * Wetek NIMs/DVB detection
 + *
@@ -5917,7 +5917,7 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +		.xtal_sharing_mode = 0,
 +		.single_supply_3_3V = 1,
 +};
-+
++#endif
 +static struct avl6211_config avl6211cfg[] = {
 +	{
 +		.tuner_address = 0xC2,
@@ -5950,8 +5950,6 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +		.set_external_vol_gpio = set_external_vol_gpio,
 +	}
 +};
-+#endif
-+
 +extern struct list_head usb_bus_list;
 +extern struct mutex usb_bus_list_lock;
 +extern struct usb_device *usb_hub_find_child(struct usb_device *hdev, int port1);
@@ -6006,13 +6004,21 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +int set_external_vol_gpio(int *demod_id, int on)
 +{
 +	if (on) {
-+		if (*demod_id == 0 )	
++		if (*demod_id == 0 )
++#ifdef CONFIG_ARCH_MESON8
++			amlogic_gpio_direction_output(GPIOH_4, 1, "nimdetect");
++#else		
 +			amlogic_gpio_direction_output(GPIOAO_8, 1, "nimdetect");		
++#endif			
 +        else if (*demod_id == 1)
 +			amlogic_gpio_direction_output(GPIOAO_9, 1, "nimdetect");			
 +	} else if (!on) {
 +		if (*demod_id == 0 )
++#ifdef CONFIG_ARCH_MESON8
++			amlogic_gpio_direction_output(GPIOH_4, 0, "nimdetect");
++#else		
 +			amlogic_gpio_direction_output(GPIOAO_8, 0, "nimdetect");		
++#endif			
 +        else if (*demod_id == 1)		
 +			amlogic_gpio_direction_output(GPIOAO_9, 0, "nimdetect");		
 +    }
@@ -6074,9 +6080,9 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +			weteknims.i2c[i] = i2c_get_adapter(4); //tuner1 on I2C_D
 +			
 +		if (weteknims.i2c[i] != NULL)
-+			dev_info(&pdev->dev, "Found Wetek i2c-%s adapter ...\n", i == 0 ? "1" : "4");
++			dev_info(&pdev->dev, "Found Wetek i2c-%s adapter ...\n", i == 0 ? "0" : "4");
 +		else {
-+			dev_info(&pdev->dev, "Failed to acquire Wetek i2c-%s adapter ...\n", i == 0 ? "1" : "4");	
++			dev_info(&pdev->dev, "Failed to acquire Wetek i2c-%s adapter ...\n", i == 0 ? "0" : "4");	
 +			return 0;
 +		}	
 +	}
@@ -6116,7 +6122,11 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +	
 +	/* FEC_RESET */
 +	amlogic_gpio_request(GPIOY_5, "nimdetect"); 
-+		
++	
++	/* INPUT1 POWER CTRL */
++	amlogic_gpio_request(GPIOH_4, "nimdetect"); 
++	
++	
 +	/* RESET DEMOD(s) */
 +	amlogic_gpio_direction_output(GPIOY_5, 0, "nimdetect");
 +	msleep(600);
@@ -6142,9 +6152,9 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +	msleep(200);
 +#endif
 +
-+#ifndef CONFIG_ARCH_MESON8
 +	dev_info(&pdev->dev, "Wetek NIM(s) detection in progress ...\n");
 +
++#ifndef CONFIG_ARCH_MESON8
 +	for (i = 0; i < TOTAL_DEMODS; i++) {		
 +		if (i == 0) {		
 +			dev_info(&pdev->dev, "Checking for Sony CXD2837 DVB-C/T/T2 demod ...\n");	
@@ -6195,6 +6205,21 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +	
 +	if (weteknims.total_nims > 0)
 +		dev_info(&pdev->dev, "Total Wetek NIM(s) found: %d\n", weteknims.total_nims);
++#else
++	for (i = 0; i < TOTAL_DEMODS - 1; i++) {		
++	
++		dev_info(&pdev->dev, "Checking for AVL6211 DVB-S/S2 demod ...\n");
++		weteknims.fe[i] = dvb_attach(avl6211_attach, weteknims.i2c[i], &avl6211cfg[i], i);
++		if (i == 0 && weteknims.fe[i] == NULL) {
++			dev_info(&pdev->dev, "No available NIM(s) found ...\n");
++			return 0;			
++		}
++		if (weteknims.fe[i] != NULL)
++			weteknims.total_nims++;		
++	}
++	
++	if (weteknims.total_nims > 0)
++		dev_info(&pdev->dev, "Total Wetek NIM(s) found: %d\n", weteknims.total_nims);
 +	
 +#endif
 +	
@@ -6215,6 +6240,7 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.c b/drivers/amlogic/wetek/nimdetect
 +	}
 +#ifdef CONFIG_ARCH_MESON8
 +	amlogic_gpio_free(GPIOY_5, "nimdetect");
++	amlogic_gpio_free(GPIOH_4, "nimdetect");
 +#else
 +	amlogic_gpio_free(GPIOD_8, "nimdetect");
 +	amlogic_gpio_free(GPIOAO_8, "nimdetect");
@@ -6348,7 +6374,7 @@ diff -Naur a/drivers/amlogic/wetek/nimdetect.h b/drivers/amlogic/wetek/nimdetect
 +#endif /* __NIMDETECT_H */
 diff -Naur a/drivers/amlogic/wifi/wifi_dt.c b/drivers/amlogic/wifi/wifi_dt.c
 --- a/drivers/amlogic/wifi/wifi_dt.c	2015-02-14 20:42:24.000000000 +0100
-+++ b/drivers/amlogic/wifi/wifi_dt.c	2015-03-18 17:18:10.000000000 +0100
++++ b/drivers/amlogic/wifi/wifi_dt.c	2015-05-31 18:50:01.000000000 +0200
 @@ -162,11 +162,51 @@
          .of_match_table = wifi_match
      },
@@ -6411,11 +6437,10 @@ diff -Naur a/drivers/amlogic/wifi/wifi_dt.c b/drivers/amlogic/wifi/wifi_dt.c
  }
  module_exit(wifi_dt_exit);
  
-@@ -246,7 +289,29 @@
+@@ -246,6 +289,40 @@
  		CHECK_RET(ret);
  		SHOW_PIN_OWN("power_on_pin2", wifi_info.power_on_pin2);
  	}
--
 +#ifdef CONFIG_ARCH_MESON6
 +	if (bt_pinctrl) {
 +	
@@ -6439,6 +6464,17 @@ diff -Naur a/drivers/amlogic/wifi/wifi_dt.c b/drivers/amlogic/wifi/wifi_dt.c
 +	
 +	}
 +#endif
++#ifdef CONFIG_ARCH_MESON8
++		ret = amlogic_gpio_request(GPIOX_20, OWNER_NAME);
++		CHECK_RET(ret);
++		ret = amlogic_gpio_direction_output(GPIOX_20, 0, OWNER_NAME);
++		CHECK_RET(ret);
++		msleep(20);
++				
++		ret = amlogic_gpio_direction_output(GPIOX_20, 1, OWNER_NAME);
++		CHECK_RET(ret);
++		msleep(50);
++#endif
+ 
  	return 0;
  }
- EXPORT_SYMBOL(wifi_setup_dt);
